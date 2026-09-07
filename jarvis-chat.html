@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS Assistant</title>
+  <style>
+    :root {
+      --primary-color: #00d2ff;
+      --bg-color: #080e18;
+      --card-bg: rgba(0, 210, 255, 0.08);
+      --text-color: #ffffff;
+      --bubble-user: rgba(0, 210, 255, 0.18);
+      --bubble-bot: rgba(255, 255, 255, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      height: 88vh;
+      background: var(--card-bg);
+      border: 1px solid var(--primary-color);
+      box-shadow: 0 0 25px var(--primary-color);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      letter-spacing: 3px;
+      color: var(--primary-color);
+      text-shadow: 0 0 10px var(--primary-color);
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .orb-container {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 10px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .orb {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--primary-color) 0%, rgba(0,0,0,0.4) 75%);
+      box-shadow: 0 0 25px var(--primary-color);
+      animation: pulse 2s infinite alternate ease-in-out;
+    }
+
+    .orb.listening {
+      animation: pulse-fast 0.5s infinite alternate ease-in-out;
+      box-shadow: 0 0 40px var(--primary-color);
+    }
+
+    .orb.thinking {
+      animation: pulse-fast 0.3s infinite alternate ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.92); opacity: 0.8; }
+      100% { transform: scale(1.08); opacity: 1; }
+    }
+
+    @keyframes pulse-fast {
+      0% { transform: scale(0.85); opacity: 0.7; }
+      100% { transform: scale(1.15); opacity: 1; }
+    }
+
+    .chat-window {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 4px;
+      margin-bottom: 10px;
+    }
+
+    .chat-window::-webkit-scrollbar { width: 6px; }
+    .chat-window::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+
+    .msg {
+      max-width: 82%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.45;
+      word-break: break-word;
+      white-space: pre-wrap;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--bubble-user);
+      border: 1px solid var(--primary-color);
+      border-bottom-right-radius: 3px;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--bubble-bot);
+      border-left: 3px solid var(--primary-color);
+      border-bottom-left-radius: 3px;
+    }
+
+    .msg.system {
+      align-self: center;
+      background: transparent;
+      color: #7fb9c9;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .controls, .customization {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    input, button, select {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--primary-color);
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+
+    button {
+      cursor: pointer;
+      background: var(--primary-color);
+      color: #000;
+      font-weight: bold;
+      border: none;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      box-shadow: 0 0 12px var(--primary-color);
+    }
+
+    .customization {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>SISTEMA JARVIS</h1>
+
+    <div class="orb-container">
+      <div class="orb" id="orb"></div>
+    </div>
+
+    <div class="chat-window" id="chatWindow">
+      <div class="msg system">Sistema listo. Escribe un mensaje o presiona el micrófono.</div>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="userInput" placeholder="Escribe un mensaje..." style="flex: 1;" />
+      <button onclick="sendMessage()">Enviar</button>
+      <button onclick="startListening()">🎤</button>
+    </div>
+
+    <div class="customization">
+      <select id="colorPicker" onchange="changeTheme(this.value)">
+        <option value="#00d2ff">Tema: Azul JARVIS</option>
+        <option value="#00ff66">Tema: Verde Matrix</option>
+        <option value="#ff0055">Tema: Rojo Cyberpunk</option>
+        <option value="#ffcc00">Tema: Dorado Stark</option>
+        <option value="#bf00ff">Tema: Violeta Neón</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ Clave incrustada directamente a petición del usuario.
+    // Cualquiera que abra este archivo (código fuente) puede verla.
+    const API_KEY = "AQ.Ab8RN6IJr430MNF-rGeJeAa64Kuq0W3P6kZ-bgZoZ3awRmPl3A";
+
+    const orb = document.getElementById('orb');
+    const chatWindow = document.getElementById('chatWindow');
+    const userInput = document.getElementById('userInput');
+
+    let history = []; // { role: 'user' | 'model', text }
+
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // Convierte un markdown básico (negrita, cursiva, código, enlaces, listas, títulos) a HTML seguro
+    function renderMarkdown(raw) {
+      let text = escapeHtml(raw);
+
+      // Bloques de código ```codigo```
+      text = text.replace(/```([\s\S]*?)```/g, (m, code) =>
+        `<pre style="background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;overflow-x:auto;margin:6px 0;"><code>${code}</code></pre>`
+      );
+
+      // Código en línea `codigo`
+      text = text.replace(/`([^`\n]+)`/g, '<code style="background:rgba(0,0,0,0.5);padding:1px 5px;border-radius:4px;">$1</code>');
+
+      // Títulos ### Titulo
+      text = text.replace(/^### (.*)$/gm, '<strong style="font-size:1.05em;">$1</strong>');
+      text = text.replace(/^## (.*)$/gm, '<strong style="font-size:1.1em;">$1</strong>');
+      text = text.replace(/^# (.*)$/gm, '<strong style="font-size:1.15em;">$1</strong>');
+
+      // Negrita **texto** o __texto__
+      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+      // Cursiva *texto* o _texto_ (evitando romper las negritas ya convertidas)
+      text = text.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+      text = text.replace(/(^|[^_])_([^_\n]+)_(?!_)/g, '$1<em>$2</em>');
+
+      // Tachado ~~texto~~
+      text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+      // Enlaces [texto](url)
+      text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--primary-color);">$1</a>');
+
+      // Listas con - o *
+      text = text.replace(/^(?:- |\* )(.*)$/gm, '<li>$1</li>');
+      text = text.replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul style="margin:4px 0;padding-left:20px;">$1</ul>');
+
+      // Listas numeradas 1. texto
+      text = text.replace(/^\d+\. (.*)$/gm, '<li>$1</li>');
+
+      // Saltos de línea restantes
+      text = text.replace(/\n/g, '<br>');
+
+      return text;
+    }
+
+    function addMessage(text, role) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      if (role === 'bot') {
+        div.innerHTML = renderMarkdown(text);
+      } else {
+        div.textContent = text;
+      }
+      chatWindow.appendChild(div);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      return div;
+    }
+
+    // --- Voz ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isListening = false;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.continuous = false;
+
+      recognition.onstart = () => {
+        isListening = true;
+        orb.classList.add('listening');
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        orb.classList.remove('listening');
+      };
+
+      recognition.onerror = (event) => {
+        isListening = false;
+        orb.classList.remove('listening');
+        addMessage(`Error de micrófono: ${event.error}`, 'system');
+      };
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        userInput.value = text;
+        sendMessage();
+      };
+    }
+
+    function startListening() {
+      if (!recognition) {
+        alert("Tu navegador no admite entrada por micrófono.");
+        return;
+      }
+      if (isListening) {
+        recognition.stop();
+        return;
+      }
+      try {
+        recognition.start();
+      } catch (err) {
+        console.error("Error al iniciar micrófono:", err);
+      }
+    }
+
+    function changeTheme(color) {
+      document.documentElement.style.setProperty('--primary-color', color);
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      document.documentElement.style.setProperty('--card-bg', `rgba(${r}, ${g}, ${b}, 0.08)`);
+    }
+
+    // --- Voz TTS ---
+    let voices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        voices = window.speechSynthesis.getVoices();
+      }
+    }
+    if ('speechSynthesis' in window) {
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.pitch = 0.9;
+        utterance.rate = 1.0;
+
+        if (voices.length === 0) voices = window.speechSynthesis.getVoices();
+        const spanishVoice = voices.find(v => v.lang.startsWith('es'));
+        if (spanishVoice) utterance.voice = spanishVoice;
+
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // --- Envío de mensajes con historial tipo chat ---
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      userInput.value = '';
+      addMessage(text, 'user');
+      history.push({ role: 'user', text });
+
+      orb.classList.add('thinking');
+      const thinkingMsg = addMessage('JARVIS está escribiendo...', 'system');
+
+      const candidateModels = [
+        "gemini-3.6-flash",
+        "gemini-1.5-flash"
+      ];
+
+      // Construir el contenido con el historial completo para mantener contexto de chat
+      const contents = history.map(h => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }]
+      }));
+
+      // Instrucción de sistema como primer turno si es la primera vez
+      const systemPreamble = {
+        role: 'user',
+        parts: [{ text: 'Actúa como JARVIS, un asistente de IA refinado, útil y conciso. Responde siempre en español.' }]
+      };
+      const systemAck = {
+        role: 'model',
+        parts: [{ text: 'Entendido. Soy JARVIS, listo para ayudar.' }]
+      };
+
+      const fullContents = history.length === 1
+        ? [systemPreamble, systemAck, ...contents]
+        : [systemPreamble, systemAck, ...contents];
+
+      let lastError = "";
+      let replied = false;
+
+      for (const model of candidateModels) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: fullContents })
+          });
+
+          const data = await res.json();
+
+          if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+            const reply = data.candidates[0].content.parts[0].text;
+            thinkingMsg.remove();
+            addMessage(reply, 'bot');
+            history.push({ role: 'model', text: reply });
+            speak(reply);
+            replied = true;
+            break;
+          } else if (data.error) {
+            lastError = data.error.message;
+          }
+        } catch (err) {
+          lastError = err.message;
+        }
+      }
+
+      orb.classList.remove('thinking');
+
+      if (!replied) {
+        thinkingMsg.remove();
+        addMessage(`Error API: ${lastError || "No se pudo conectar con Gemini."}`, 'system');
+        history.pop(); // no dejar el mensaje de usuario "colgado" sin respuesta útil
+        history.push({ role: 'user', text }); // pero conservamos igualmente el turno real
+      }
+    }
+  </script>
+</body>
+</html>
