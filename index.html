@@ -192,6 +192,8 @@ l.parentNode.insertBefore(s, l);
       margin-top: 10px;
     }
   </style>
+  <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#000000">
 </head>
 <body>
 
@@ -513,5 +515,14 @@ s.referrerPolicy = 'no-referrer-when-downgrade';
 l.parentNode.insertBefore(s, l);
 })({})
 </script>
+<script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito', reg))
+                    .catch(err => console.warn('Error al registrar el Service Worker', err));
+            });
+        }
+    </script>
 </body>
 </html>
